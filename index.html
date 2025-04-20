@@ -177,6 +177,14 @@
       border-radius: 5px;
       margin-bottom: 0.5rem;
     }
+
+    .button-row {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
@@ -210,7 +218,8 @@
         <input type="file" id="file-input" class="file-input" accept="video/*">
         <button type="button" class="browse-btn" onclick="document.getElementById('file-input').click()">Browse Files</button>
       </div>
-      <div style="text-align: center;">
+
+      <div class="button-row">
         <button class="action-btn" onclick="uploadVideo()" id="upload-btn">Upload Video</button>
         <button class="action-btn" onclick="analyzeVideo()" id="analyze-btn" style="display: none;">Analyze Video</button>
       </div>
@@ -332,14 +341,19 @@
           method: 'GET'
         });
 
-        const data = await response.json();
+        const text = await response.text();
+        try {
+          const data = JSON.parse(text);
 
-        if (response.ok) {
-          resultText.innerText = data.prediction;
-          resultText.className = `result ${data.prediction === 'REAL' ? 'real' : 'fake'}`;
-          resultContainer.style.display = 'block';
-        } else {
-          showFlashMessage(data.error || 'Prediction failed');
+          if (response.ok) {
+            resultText.innerText = data.prediction;
+            resultText.className = `result ${data.prediction === 'REAL' ? 'real' : 'fake'}`;
+            resultContainer.style.display = 'block';
+          } else {
+            showFlashMessage(data.error || 'Prediction failed');
+          }
+        } catch (err) {
+          showFlashMessage('Error: Response is not in JSON format');
         }
       } catch (error) {
         showFlashMessage(`Error: ${error.message}`);

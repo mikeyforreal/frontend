@@ -177,14 +177,6 @@
       border-radius: 5px;
       margin-bottom: 0.5rem;
     }
-
-    .button-row {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-top: 1rem;
-      flex-wrap: wrap;
-    }
   </style>
 </head>
 <body>
@@ -218,8 +210,7 @@
         <input type="file" id="file-input" class="file-input" accept="video/*">
         <button type="button" class="browse-btn" onclick="document.getElementById('file-input').click()">Browse Files</button>
       </div>
-
-      <div class="button-row">
+      <div style="text-align: center;">
         <button class="action-btn" onclick="uploadVideo()" id="upload-btn">Upload Video</button>
         <button class="action-btn" onclick="analyzeVideo()" id="analyze-btn" style="display: none;">Analyze Video</button>
       </div>
@@ -301,7 +292,7 @@
         uploadBtn.disabled = true;
         uploadBtn.innerText = 'Uploading...';
 
-        const response = await fetch(`${BACKEND_URL}/`, {
+        const response = await fetch(${BACKEND_URL}/, {
           method: 'POST',
           body: formData
         });
@@ -312,7 +303,7 @@
           uploadedFilename = data.filename;
           showFlashMessage('File successfully uploaded');
 
-          const videoUrl = `${BACKEND_URL}/static/uploads/${uploadedFilename}`;
+          const videoUrl = ${BACKEND_URL}/static/uploads/${uploadedFilename};
           videoElement.src = videoUrl;
           videoPlayer.style.display = 'block';
           analyzeBtn.style.display = 'block';
@@ -320,7 +311,7 @@
           showFlashMessage(data.error || 'Upload failed');
         }
       } catch (error) {
-        showFlashMessage(`Error: ${error.message}`);
+        showFlashMessage(Error: ${error.message});
       } finally {
         uploadBtn.disabled = false;
         uploadBtn.innerText = 'Upload Video';
@@ -337,26 +328,21 @@
         analyzeBtn.disabled = true;
         analyzeBtn.innerText = 'Analyzing...';
 
-        const response = await fetch(`${BACKEND_URL}/predict/${uploadedFilename}`, {
+        const response = await fetch(${BACKEND_URL}/predict/${uploadedFilename}, {
           method: 'GET'
         });
 
-        const text = await response.text();
-        try {
-          const data = JSON.parse(text);
+        const data = await response.json();
 
-          if (response.ok) {
-            resultText.innerText = data.prediction;
-            resultText.className = `result ${data.prediction === 'REAL' ? 'real' : 'fake'}`;
-            resultContainer.style.display = 'block';
-          } else {
-            showFlashMessage(data.error || 'Prediction failed');
-          }
-        } catch (err) {
-          showFlashMessage('Error: Response is not in JSON format');
+        if (response.ok) {
+          resultText.innerText = data.prediction;
+          resultText.className = result ${data.prediction === 'REAL' ? 'real' : 'fake'};
+          resultContainer.style.display = 'block';
+        } else {
+          showFlashMessage(data.error || 'Prediction failed');
         }
       } catch (error) {
-        showFlashMessage(`Error: ${error.message}`);
+        showFlashMessage(Error: ${error.message});
       } finally {
         analyzeBtn.disabled = false;
         analyzeBtn.innerText = 'Analyze Video';
@@ -371,4 +357,4 @@
     }
   </script>
 </body>
-</html>
+</html> 

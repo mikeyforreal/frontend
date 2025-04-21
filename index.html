@@ -172,6 +172,10 @@
     .result.fake {
       color: #e74c3c;
     }
+    .confidence {
+      font-size: 1.5rem;
+      margin-top: 0.5rem;
+    }
     .flash-messages {
       list-style: none;
       margin-bottom: 1rem;
@@ -181,6 +185,26 @@
       padding: 0.75rem;
       border-radius: 5px;
       margin-bottom: 0.5rem;
+    }
+    .backend-url-input {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      border: none;
+      border-radius: 5px;
+    }
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 5px solid var(--primary-green);
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -202,6 +226,8 @@
     </section>
 
     <div class="upload-container">
+      <input type="text" id="backend-url" class="backend-url-input" placeholder="Enter ngrok URL from Colab (e.g. https://xxxx-xx-xxx-xxx-xxx.ngrok-free.app)" value="">
+      
       <ul class="flash-messages" id="flash-messages"></ul>
 
       <div class="video-player" id="video-player" style="display: none;">
@@ -220,8 +246,11 @@
         <button class="action-btn" onclick="analyzeVideo()" id="analyze-btn" style="display: none;">Analyze Video</button>
       </div>
 
+      <div id="loader" class="loader" style="display: none;"></div>
+
       <div class="result-container" id="result-container" style="display: none;">
         <h2 class="result" id="result-text"></h2>
+        <p class="confidence" id="confidence-text"></p>
       </div>
     </div>
   </main>
@@ -236,9 +265,15 @@
     const analyzeBtn = document.getElementById('analyze-btn');
     const resultContainer = document.getElementById('result-container');
     const resultText = document.getElementById('result-text');
+    const confidenceText = document.getElementById('confidence-text');
+    const backendUrlInput = document.getElementById('backend-url');
+    const loader = document.getElementById('loader');
 
-    // Update this URL to your active ngrok URL
-    const BACKEND_URL = 'http://9997-34-168-178-135.ngrok-free.app';
+    // Try to load backend URL from localStorage
+    const savedBackendUrl = localStorage.getItem('deepdetect_backend_url');
+    if (savedBackendUrl) {
+      backendUrlInput.value = savedBackendUrl;
+    }
 
     let uploadedFilename = null;
 
@@ -278,8 +313,26 @@
       fileInput.files = files;
     }
 
+    // Save backend URL to localStorage when changed
+    backendUrlInput.addEventListener('change', function() {
+      localStorage.setItem('deepdetect_backend_url', this.value);
+    });
+
+    // Get backend URL
+    function getBackendUrl() {
+      const url = backendUrlInput.value.trim();
+      if (!url) {
+        showFlashMessage('Please enter the ngrok URL from your Colab notebook');
+        return null;
+      }
+      return url;
+    }
+
     // Upload video function
     async function uploadVideo() {
+      const backendUrl = getBackendUrl();
+      if (!backendUrl) return;
+
       const file = fileInput.files[0];
       if (!file) {
         showFlashMessage('No file selected for uploading');
@@ -299,8 +352,9 @@
       try {
         uploadBtn.disabled = true;
         uploadBtn.innerText = 'Uploading...';
+        loader.style.display = 'block';
 
-        const response = await fetch(`${BACKEND_URL}/`, {
+        const response = await fetch(`${backendUrl}/`, {
           method: 'POST',
           body: formData
         });
@@ -316,6 +370,7 @@
           videoElement.src = URL.createObjectURL(blob);
           videoPlayer.style.display = 'block';
           analyzeBtn.style.display = 'block';
+          resultContainer.style.display = 'none'; // Hide previous results
         } else {
           showFlashMessage(data.error || 'Upload failed');
         }
@@ -324,11 +379,15 @@
       } finally {
         uploadBtn.disabled = false;
         uploadBtn.innerText = 'Upload Video';
+        loader.style.display = 'none';
       }
     }
 
     // Analyze video function
     async function analyzeVideo() {
+      const backendUrl = getBackendUrl();
+      if (!backendUrl) return;
+      
       if (!uploadedFilename) {
         showFlashMessage('No video uploaded');
         return;
@@ -337,8 +396,10 @@
       try {
         analyzeBtn.disabled = true;
         analyzeBtn.innerText = 'Analyzing...';
+        loader.style.display = 'block';
+        resultContainer.style.display = 'none';
 
-        const response = await fetch(`${BACKEND_URL}/predict/${encodeURIComponent(uploadedFilename)}`, {
+        const response = await fetch(`${backendUrl}/predict/${encodeURIComponent(uploadedFilename)}`, {
           method: 'GET'
         });
 
@@ -346,7 +407,14 @@
 
         if (response.ok) {
           resultText.innerText = data.prediction;
-          resultText.className = `result ${data.prediction === 'REAL' ? 'real' : 'fake'}`;
+          resultText.className = `result ${data.prediction.toLowerCase()}`;
+          
+          if (data.confidence) {
+            confidenceText.innerText = `Confidence: ${parseFloat(data.confidence) * 100}%`;
+          } else {
+            confidenceText.innerText = '';
+          }
+          
           resultContainer.style.display = 'block';
         } else {
           showFlashMessage(data.error || 'Prediction failed');
@@ -356,6 +424,7 @@
       } finally {
         analyzeBtn.disabled = false;
         analyzeBtn.innerText = 'Analyze Video';
+        loader.style.display = 'none';
       }
     }
 

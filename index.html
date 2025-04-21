@@ -140,6 +140,11 @@
       background-color: var(--black);
       color: var(--white);
     }
+    .action-btn:disabled {
+      background-color: #ccc;
+      color: #666;
+      cursor: not-allowed;
+    }
     .video-player {
       max-width: 100%;
       margin-bottom: 2rem;
@@ -232,10 +237,12 @@
     const resultContainer = document.getElementById('result-container');
     const resultText = document.getElementById('result-text');
 
+    // Update this URL to your active ngrok URL
     const BACKEND_URL = 'https://f582-34-168-172-254.ngrok-free.app';
 
     let uploadedFilename = null;
 
+    // Drag and drop event handlers
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
       dropArea.addEventListener(eventName, preventDefaults, false);
     });
@@ -271,6 +278,7 @@
       fileInput.files = files;
     }
 
+    // Upload video function
     async function uploadVideo() {
       const file = fileInput.files[0];
       if (!file) {
@@ -292,7 +300,7 @@
         uploadBtn.disabled = true;
         uploadBtn.innerText = 'Uploading...';
 
-        const response = await fetch(${BACKEND_URL}/, {
+        const response = await fetch(`${BACKEND_URL}/`, {
           method: 'POST',
           body: formData
         });
@@ -303,21 +311,23 @@
           uploadedFilename = data.filename;
           showFlashMessage('File successfully uploaded');
 
-          const videoUrl = ${BACKEND_URL}/static/uploads/${uploadedFilename};
-          videoElement.src = videoUrl;
+          // Use a blob URL for video preview since the server doesn't serve static files directly
+          const blob = new Blob([await file.arrayBuffer()], { type: file.type });
+          videoElement.src = URL.createObjectURL(blob);
           videoPlayer.style.display = 'block';
           analyzeBtn.style.display = 'block';
         } else {
           showFlashMessage(data.error || 'Upload failed');
         }
       } catch (error) {
-        showFlashMessage(Error: ${error.message});
+        showFlashMessage(`Error: ${error.message}`);
       } finally {
         uploadBtn.disabled = false;
         uploadBtn.innerText = 'Upload Video';
       }
     }
 
+    // Analyze video function
     async function analyzeVideo() {
       if (!uploadedFilename) {
         showFlashMessage('No video uploaded');
@@ -328,7 +338,7 @@
         analyzeBtn.disabled = true;
         analyzeBtn.innerText = 'Analyzing...';
 
-        const response = await fetch(${BACKEND_URL}/predict/${uploadedFilename}, {
+        const response = await fetch(`${BACKEND_URL}/predict/${encodeURIComponent(uploadedFilename)}`, {
           method: 'GET'
         });
 
@@ -336,19 +346,20 @@
 
         if (response.ok) {
           resultText.innerText = data.prediction;
-          resultText.className = result ${data.prediction === 'REAL' ? 'real' : 'fake'};
+          resultText.className = `result ${data.prediction === 'REAL' ? 'real' : 'fake'}`;
           resultContainer.style.display = 'block';
         } else {
           showFlashMessage(data.error || 'Prediction failed');
         }
       } catch (error) {
-        showFlashMessage(Error: ${error.message});
+        showFlashMessage(`Error: ${error.message}`);
       } finally {
         analyzeBtn.disabled = false;
         analyzeBtn.innerText = 'Analyze Video';
       }
     }
 
+    // Flash message function
     function showFlashMessage(message) {
       const li = document.createElement('li');
       li.innerText = message;
@@ -357,4 +368,4 @@
     }
   </script>
 </body>
-</html>  
+</html>

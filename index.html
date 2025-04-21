@@ -206,6 +206,18 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    .console-output {
+      background-color: rgba(0,0,0,0.3);
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      font-family: monospace;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 200px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -252,6 +264,9 @@
         <h2 class="result" id="result-text"></h2>
         <p class="confidence" id="confidence-text"></p>
       </div>
+      
+      <!-- Added debug output section -->
+      <div id="debug-output" class="console-output" style="display: none;"></div>
     </div>
   </main>
 
@@ -268,6 +283,7 @@
     const confidenceText = document.getElementById('confidence-text');
     const backendUrlInput = document.getElementById('backend-url');
     const loader = document.getElementById('loader');
+    const debugOutput = document.getElementById('debug-output');
 
     // Try to load backend URL from localStorage
     const savedBackendUrl = localStorage.getItem('deepdetect_backend_url');
@@ -276,6 +292,15 @@
     }
 
     let uploadedFilename = null;
+
+    // Debug logger function
+    function logDebug(message) {
+      console.log(message);
+      debugOutput.style.display = 'block';
+      const timestamp = new Date().toLocaleTimeString();
+      debugOutput.innerHTML += `[${timestamp}] ${message}\n`;
+      debugOutput.scrollTop = debugOutput.scrollHeight;
+    }
 
     // Drag and drop event handlers
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -353,16 +378,34 @@
         uploadBtn.disabled = true;
         uploadBtn.innerText = 'Uploading...';
         loader.style.display = 'block';
+        
+        logDebug(`Starting upload to ${backendUrl}/`);
 
         const response = await fetch(`${backendUrl}/`, {
           method: 'POST',
           body: formData
         });
 
-        const data = await response.json();
+        logDebug(`Upload response status: ${response.status} ${response.statusText}`);
+        
+        // Get the raw response text first for debugging
+        const responseText = await response.text();
+        logDebug(`Raw response: ${responseText}`);
+        
+        // Try to parse as JSON
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          logDebug(`Parsed JSON: ${JSON.stringify(data)}`);
+        } catch (e) {
+          logDebug(`Failed to parse JSON: ${e.message}`);
+          showFlashMessage(`Error parsing server response: ${e.message}`);
+          return;
+        }
 
         if (response.ok) {
           uploadedFilename = data.filename;
+          logDebug(`Uploaded filename: ${uploadedFilename}`);
           showFlashMessage('File successfully uploaded');
 
           // Use a blob URL for video preview since the server doesn't serve static files directly
@@ -375,6 +418,7 @@
           showFlashMessage(data.error || 'Upload failed');
         }
       } catch (error) {
+        logDebug(`Upload error: ${error.message}`);
         showFlashMessage(`Error: ${error.message}`);
       } finally {
         uploadBtn.disabled = false;
@@ -399,18 +443,33 @@
         loader.style.display = 'block';
         resultContainer.style.display = 'none';
 
-        const response = await fetch(`${backendUrl}/predict/${encodeURIComponent(uploadedFilename)}`, {
-          method: 'GET'
-        });
+        const url = `${backendUrl}/predict/${encodeURIComponent(uploadedFilename)}`;
+        logDebug(`Requesting analysis: ${url}`);
 
-        const data = await response.json();
+        const response = await fetch(url);
+        logDebug(`Analysis response status: ${response.status} ${response.statusText}`);
+        
+        // Get raw response for debugging
+        const responseText = await response.text();
+        logDebug(`Raw analysis response: ${responseText}`);
+        
+        // Try to parse the response as JSON
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          logDebug(`Parsed prediction JSON: ${JSON.stringify(data)}`);
+        } catch (e) {
+          logDebug(`Failed to parse prediction response: ${e.message}`);
+          showFlashMessage(`Error parsing prediction response: ${e.message}`);
+          return;
+        }
 
         if (response.ok) {
           resultText.innerText = data.prediction;
           resultText.className = `result ${data.prediction.toLowerCase()}`;
           
           if (data.confidence) {
-            confidenceText.innerText = `Confidence: ${parseFloat(data.confidence) * 100}%`;
+            confidenceText.innerText = `Confidence: ${(parseFloat(data.confidence) * 100).toFixed(1)}%`;
           } else {
             confidenceText.innerText = '';
           }
@@ -420,6 +479,7 @@
           showFlashMessage(data.error || 'Prediction failed');
         }
       } catch (error) {
+        logDebug(`Analysis error: ${error.message}`);
         showFlashMessage(`Error: ${error.message}`);
       } finally {
         analyzeBtn.disabled = false;

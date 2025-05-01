@@ -145,6 +145,12 @@
       color: #666;
       cursor: not-allowed;
     }
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
     .video-player {
       max-width: 100%;
       margin-bottom: 2rem;
@@ -253,7 +259,7 @@
         <input type="file" id="file-input" class="file-input" accept="video/*">
         <button type="button" class="browse-btn" onclick="document.getElementById('file-input').click()">Browse Files</button>
       </div>
-      <div style="text-align: center;">
+      <div class="button-container">
         <button class="action-btn" onclick="uploadVideo()" id="upload-btn">Upload Video</button>
         <button class="action-btn" onclick="analyzeVideo()" id="analyze-btn" style="display: none;">Analyze Video</button>
       </div>
